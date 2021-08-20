@@ -1,0 +1,3 @@
+architecture: YOLOX
+pretrain_weights: /f/hulei/pd_match/YOLOX/paddle_reproduce/yolox-paddle/yolox/yolox_pre
+norm_type: sync_bn

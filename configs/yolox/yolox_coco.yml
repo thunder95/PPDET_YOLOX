@@ -1,0 +1,11 @@
+_BASE_: [
+  '../datasets/coco_detection.yml',
+  '../runtime.yml',
+  'optimizer_yolox.yml',
+  'yolox.yml',
+  'yolox_reader.yml',
+]
+pretrain_weights: /f/hulei/pd_match/YOLOX/paddle_reproduce/yolox-paddle/yolox/yolox_pre.pdparams
+weights: /f/hulei/pd_match/YOLOX/paddle_reproduce/yolox-paddle/yolox/yolox_pre
+
+
