@@ -183,9 +183,9 @@ class Checkpointer(Callback):
                             weight = self.weight
                         logger.info("Best test {} ap is {:0.3f}.".format(
                             key, self.best_ap))
-            if weight:
-                save_model(weight, self.model.optimizer, self.save_dir,
-                           save_name, epoch_id + 1)
+            # if weight:
+            #     save_model(weight, self.model.optimizer, self.save_dir,
+            #                save_name, epoch_id + 1)
 
 
 class WiferFaceEval(Callback):

@@ -31,7 +31,7 @@ class IOULoss(nn.Layer):
         area_p = paddle.prod(pred[:, 2:], 1) #面积p
         area_g = paddle.prod(target[:, 2:], 1) #面积q
 
-        en = (tl < br).astype(tl.dtype).prod(axis=1) #判断是否相交
+        en = paddle.cast((tl < br), tl.dtype).prod(axis=1) #判断是否相交
         area_i = paddle.prod(br - tl, 1) * en #dw * dy
         iou = (area_i) / (area_p + area_g - area_i + 1e-16)
 

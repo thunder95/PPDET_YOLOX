@@ -41,6 +41,8 @@ import ppdet.utils.stats as stats
 from .callbacks import Callback, ComposeCallback, LogPrinter, Checkpointer, WiferFaceEval, VisualDLWriter
 from .export_utils import _dump_infer_config
 
+from paddle import nn
+
 from ppdet.utils.logger import setup_logger
 logger = setup_logger('ppdet.engine')
 
@@ -74,9 +76,21 @@ class Trainer(object):
         if 'model' not in self.cfg:
             # print("----->", cfg.architecture)
             self.model = create(cfg.architecture)
+            # for name, parms in self.model.named_parameters():
+            #     if parms.stop_gradient:
+            #         print("----->", name)
         else:
             self.model = self.cfg.model
             self.is_loaded_weights = True
+
+        # 设置batchnorm2d
+        for m in self.model.sublayers():
+            if isinstance(m, nn.BatchNorm2D):
+                m.eps = 1e-3
+                m.momentum = 0.97
+        # 设置head的bias
+        self.model.head.initialize_biases(1e-2)
+        print("initial bn layer done !!!")
 
         self.use_ema = ('use_ema' in cfg and cfg['use_ema'])
         if self.use_ema:
@@ -256,6 +270,10 @@ class Trainer(object):
             self._reset_metrics()
 
         model = self.model
+
+
+
+
         if self.cfg.get('fleet', False):
             model = fleet.distributed_model(model)
             self.optimizer = fleet.distributed_optimizer(self.optimizer)
@@ -297,8 +315,10 @@ class Trainer(object):
                 if self.cfg.get('fp16', False):
                     with amp.auto_cast(enable=self.cfg.use_gpu):
                         # model forward
-                        outputs = model(data)
+                        outputs = self.model(data)
                         loss = outputs['loss']
+
+
 
                     # model backward
                     scaled_loss = scaler.scale(loss)
@@ -308,11 +328,48 @@ class Trainer(object):
                 else:
                     # model forward
                     outputs = model(data)
-                    print("paddle train loss: ", outputs["total_loss"])
+                    # print("paddle train loss: ", outputs["total_loss"])
+                    # print("paddle iou loss: ", outputs["iou_loss"])
+                    # print(outputs)
                     loss = outputs['total_loss']
                     # model backward
                     loss.backward()
                     self.optimizer.step()
+
+                    # for k, v in model.named_sublayers():
+                    #     print(k, v.stop_gradient)
+                    # exit()
+
+
+                    # t1 = 0
+                    # t2 = 0
+                    # for name, parms in self.model.named_parameters():
+                    #
+                    #     try:
+                    #         #print('-->name:', name, '-->requires_grad:', parms.stop_gradient, ' -->grad_value:', parms.grad)
+                    #         # print(name)
+                    #         if "loss" in name.lower():
+                    #             print(name)
+                    #
+                    #         if not parms.stop_gradient:
+                    #             # print(name, parms.grad)
+                    #             if parms.grad.abs().sum() == 0.0:
+                    #                 t1 += 1
+                    #
+                    #             else:
+                    #                 t2 += 1
+                    #
+                    #         else:
+                    #             pass
+                    #             #print("===>", name)
+                    #
+                    #         # if t1 == 456:
+                    #         #     print(t1, t2) #t2应该有值才对, bn层的mean和variance没有梯度(正常的)
+                    #         print(t1, t2)  # t2应该有值才对, bn层的mean和variance没有梯度(正常的)
+                    #     except:
+                    #         #print("--->error", name)
+                    #         pass
+                    # exit()
 
                 curr_lr = self.optimizer.get_lr()
                 # print("curr_lr", curr_lr)

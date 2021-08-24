@@ -42,10 +42,9 @@ class BaseConv(nn.Layer):
             bias_attr=bias,
         )
 
-        weight_attr = paddle.ParamAttr(regularizer=paddle.regularizer.L2Decay(0))
-        bias_attr = paddle.ParamAttr(regularizer=paddle.regularizer.L2Decay(0))
+        weight_attr = paddle.ParamAttr(regularizer=paddle.regularizer.L2Decay(0), trainable=True)
+        bias_attr = paddle.ParamAttr(regularizer=paddle.regularizer.L2Decay(0), trainable=True)
         self.bn = nn.BatchNorm2D(num_features=out_channels, epsilon=1e-3, momentum=0.97, weight_attr=weight_attr, bias_attr=bias_attr)
-        # self.bn = nn.BatchNorm2D(num_features=out_channels)
         self.act = get_activation(activation, inplace=True)
 
     def forward(self, x):

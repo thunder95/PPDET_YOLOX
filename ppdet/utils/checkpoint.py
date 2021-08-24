@@ -98,6 +98,8 @@ def _strip_postfix(path):
 
 
 def load_weight(model, weight, optimizer=None):
+
+
     if is_url(weight):
         weight = get_weights_path_dist(weight)
 
@@ -111,7 +113,7 @@ def load_weight(model, weight, optimizer=None):
     model_dict = model.state_dict()
     model_weight = {}
     incorrect_keys = 0
-    # print("===> ", len(model_dict.keys()), len(param_state_dict.keys()))
+    print("===> ", len(model_dict.keys()), len(param_state_dict.keys()))
     for key in model_dict.keys():
         if key in param_state_dict.keys():
             model_weight[key] = param_state_dict[key]
@@ -130,10 +132,12 @@ def load_weight(model, weight, optimizer=None):
             m.eps = 1e-3
             m.momentum = 0.97
 
-    # 设置head的bias
+    #设置head的bias
     model.head.initialize_biases(1e-2)
+    print("---> batch norm updated....")
 
     model.set_dict(model_weight)
+
 
     last_epoch = 0
     if optimizer is not None and os.path.exists(path + '.pdopt'):

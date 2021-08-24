@@ -1,3 +1,7 @@
 architecture: YOLOX
 pretrain_weights: /f/hulei/pd_match/YOLOX/paddle_reproduce/yolox-paddle/yolox/yolox_pre
-norm_type: sync_bn
+norm_type: bn
+num_classes: 80
+use_gpu: True
+use_ema: True
+ema_decay: 0.9998

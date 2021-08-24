@@ -30,6 +30,7 @@ class YoloXHead(nn.Layer):
         self.obj_preds = nn.LayerList()
         self.stems = nn.LayerList()
         Conv = DWConv if depthwise else BaseConv
+        # print("Conv: ", depthwise, Conv)
 
         for i in range(len(in_channels)):
             self.stems.append(BaseConv(in_channels=int(in_channels[i] * width),
@@ -169,6 +170,14 @@ class YoloXHead(nn.Layer):
                 origin_preds,
                 dtype=xin[0].dtype,
             )
+
+            # loss = 0.0
+            # mse_loss = paddle.nn.MSELoss()
+            # for i in range(len(outputs)):
+            #     t = paddle.ones_like(outputs[i]).astype(outputs[i].dtype)
+            #     loss += mse_loss(outputs[i], t)
+            # print("mse loss: ", loss)
+            # return loss
         else:
             self.hw = [x.shape[-2:] for x in outputs]
             # [batch, n_anchors_all, 85]
@@ -198,9 +207,15 @@ class YoloXHead(nn.Layer):
 
         # print(output.shape)
 
-        output[:, :, :2] = (output[:, :, :2] + grid) * stride
-        output[:, :, 2:4] = paddle.exp(output[:, :, 2:4]) * stride
+        #切片赋值导致梯度为0
+        # tmp = output[:, :, :2].clone()
+        # output[:, :, :2] = (tmp + grid) * stride
+        # tmp = output[:, :, 2:4].clone()
+        # output[:, :, 2:4] = paddle.exp(tmp) * stride
 
+        out1 = (output[:, :, :2] + grid) * stride
+        out2 = paddle.exp(output[:, :, 2:4]) * stride
+        output = paddle.concat(x=[out1, out2, output[:, :, 4:]], axis=-1)
         return output, grid
 
     @paddle.no_grad()
@@ -248,6 +263,7 @@ class YoloXHead(nn.Layer):
         bbox_preds = outputs[:, :, :4]  # [batch, n_anchors_all, 4]                       => [1, 8400, 4]
         obj_preds = outputs[:, :, 4].unsqueeze(-1)  # [batch, n_anchors_all, 1]           => [1, 8400, 1]
         cls_preds = outputs[:, :, 5:]  # [batch, n_anchors_all, n_cls]                    => [1, 8400, 80]
+        # print("cls_preds", cls_preds.grad)
 
         # calculate targets
         # labels shape: [batch, coords_and_class(85), #objects_in_img]
@@ -256,7 +272,11 @@ class YoloXHead(nn.Layer):
             label_cut = labels[:, :, :5]
         else:
             label_cut = labels
+
+        # print("label_cut", label_cut.stop_gradient)
         nlabel = (label_cut.sum(axis=2) > 0).astype(paddle.int32).sum(axis=1)  # #objects => 21
+
+        # print("nlabel", nlabel.stop_gradient)
 
         total_num_anchors = outputs.shape[1]
         x_shifts = paddle.concat(x_shifts, 1)  # [1, n_anchors_all]
@@ -313,6 +333,9 @@ class YoloXHead(nn.Layer):
                         labels,
                         imgs,
                     )
+
+                    # print("pred_ious_this_matching: ", pred_ious_this_matching.stop_gradient)
+
                 except RuntimeError:
                     logger.error(
                         "OOM RuntimeError is raised due to the huge memory cost during label assignment. \
@@ -369,10 +392,16 @@ class YoloXHead(nn.Layer):
             if self.use_l1:
                 l1_targets.append(l1_target)
 
+        # print("obj_targets1", obj_targets[0].stop_gradient)
+
         cls_targets = paddle.concat(cls_targets, 0) #空标签会报错, 在预处理时干掉, 跟原作者代码不一致
         reg_targets = paddle.concat(reg_targets, 0)
         obj_targets = paddle.concat(obj_targets, 0)
         fg_masks = paddle.concat(fg_masks, 0)
+        # print("obj_targets2", obj_targets.stop_gradient)
+        # print("cls_targets", cls_targets.stop_gradient)
+        # print("fg_masks", fg_masks.stop_gradient)
+
         if self.use_l1:
             l1_targets = paddle.concat(l1_targets, 0)
 
@@ -394,6 +423,8 @@ class YoloXHead(nn.Layer):
         loss_obj = (
                        self.bcewithlog_loss(obj_preds.reshape((-1, 1)), obj_targets)
                    ).sum() / num_fg
+        # print("loss_obj", loss_obj.grad)
+
 
         _mask = fg_masks.tile((self.num_classes,)).reshape((self.num_classes, -1)).astype(paddle.int32).t().astype(paddle.bool)
         loss_cls = (
@@ -405,7 +436,7 @@ class YoloXHead(nn.Layer):
 
         reg_weight = 5.0
         loss = reg_weight * loss_iou + loss_obj + loss_cls + loss_l1
-
+        # print("loss: ", loss.stop_gradient) #false
         return (
             loss,
             reg_weight * loss_iou,

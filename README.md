@@ -1,2 +1,1 @@
-# PPDET_YOLOX
-ppdetection版yolox
+README_cn.md

@@ -45,6 +45,7 @@ class YOLOX(BaseArch):
             loss, iou_loss, conf_loss, cls_loss, l1_loss, num_fg = self.head(
                 fpn_outs, targets, input_img
             )
+
             return {
                 "total_loss": loss,
                 "iou_loss": iou_loss,
@@ -53,6 +54,21 @@ class YOLOX(BaseArch):
                 "cls_loss": cls_loss,
                 "num_fg": num_fg,
             }
+            # loss = self.head(
+            #     fpn_outs, targets, input_img
+            # )
+            # return {"total_loss": loss}
+
+
+            # loss = 0.0
+            # mse_loss = paddle.nn.MSELoss()
+            # for i in range(len(fpn_outs)):
+            #     t = paddle.ones_like(fpn_outs[i]).astype(fpn_outs[i].dtype)
+            #     loss += mse_loss(fpn_outs[i], t)
+            # print("mse loss: ", loss)
+            # return {"total_loss": loss}
+
+
         else:
             outputs = self.head(fpn_outs)
             boxes, boxes_num = postprocess(outputs, self.inputs['im_shape'], self.inputs['scale_factor'])

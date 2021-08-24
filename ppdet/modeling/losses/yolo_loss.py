@@ -183,6 +183,7 @@ class YOLOv3Loss(nn.Layer):
         return loss
 
     def forward(self, inputs, targets, anchors):
+        # print("inputs", inputs[0].grad)
         np = len(inputs)
         gt_targets = [targets['target{}'.format(i)] for i in range(np)]
         gt_box = targets['gt_bbox']
@@ -201,6 +202,5 @@ class YOLOv3Loss(nn.Layer):
         loss = 0
         for k, v in yolo_losses.items():
             loss += v
-
         yolo_losses['loss'] = loss
         return yolo_losses

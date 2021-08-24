@@ -306,6 +306,8 @@ class OptimizerBuilder():
         optim_type = optim_args['type']
         del optim_args['type']
         op = getattr(optimizer, optim_type)
+        # print("===>optimizer", learning_rate,  regularization, grad_clip, optim_args)
+        # exit()
         return op(learning_rate=learning_rate,
                   parameters=params,
                   weight_decay=regularization,
